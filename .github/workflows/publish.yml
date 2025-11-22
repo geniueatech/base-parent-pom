@@ -1,5 +1,4 @@
 name: Publish Parent POM
-
 on:
   push:
     branches:
@@ -8,13 +7,10 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-
     steps:
-      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
-
-      # 2️⃣ Set up Java 21 and Maven
+        
       - name: Set up Java
         uses: actions/setup-java@v3
         with:
@@ -22,7 +18,6 @@ jobs:
           java-version: 21
           cache: maven
 
-      # 3️⃣ Read current version from pom.xml
       - name: Read current version
         id: read_version
         run: |
@@ -30,7 +25,6 @@ jobs:
           echo "CURRENT_VERSION=$version" >> $GITHUB_ENV
           echo "Current version: $version"
 
-      # 4️⃣ Calculate unique version
       - name: Calculate unique version
         id: bump_version
         run: |
@@ -45,18 +39,15 @@ jobs:
           echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
           echo "Using unique version: $new_version"
 
-      # 5️⃣ Update pom.xml version
       - name: Update pom.xml version
         run: |
           mvn versions:set -DnewVersion=${NEW_VERSION} -DgenerateBackupPoms=false
 
-      # 6️⃣ Deploy to GitHub Packages
       - name: Deploy to GitHub Packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn deploy -DskipTests
 
-      # 7️⃣ Commit version bump and tag
       - name: Commit version bump and tag
         run: |
           git config user.name "github-actions"
