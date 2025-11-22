@@ -52,7 +52,7 @@ jobs:
 
       - name: Deploy to GitHub Packages
         env:
-          GITHUB_TOKEN: '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'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn deploy -DskipTests
 
       - name: Commit version bump and tag
