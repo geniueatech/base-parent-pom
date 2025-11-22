@@ -42,7 +42,6 @@ jobs:
 
             # Version exists, increment patch
             patch=$((patch + 1))
-          done
 
           echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
           echo "Using unique version: $new_version"
