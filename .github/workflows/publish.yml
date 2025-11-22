@@ -18,26 +18,26 @@ jobs:
           java-version: 21
           cache: maven
 
-      - name: Read current version
-        id: read_version
-        run: |
-          version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | grep -Ev '^\[.*\]$' | tail -n1 | sed 's/-SNAPSHOT//')
-          echo "CURRENT_VERSION=$version" >> $GITHUB_ENV
-          echo "Current version: $version"
+    #  - name: Read current version
+    #   id: read_version
+    #    run: |
+    #      version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | grep -Ev '^\[.*\]$' | tail -n1 | sed 's/-SNAPSHOT//')
+    #      echo "CURRENT_VERSION=$version" >> $GITHUB_ENV
+    #      echo "Current version: $version"
 
-      - name: Calculate unique version
-        id: bump_version
-        run: |
-          current="${CURRENT_VERSION}"
-          if [ -z "$current" ]; then
-            current="0.0.1"
-          fi
-          IFS='.' read -r major minor patch <<< "$current"
-          if [ -z "$patch" ]; then patch=0; fi
-          patch=$((patch + 1))
-          new_version="${major}.${minor}.${patch}"
-          echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
-          echo "Using unique version: $new_version"
+    #  - name: Calculate unique version
+    #    id: bump_version
+    #    run: |
+    #      current="${CURRENT_VERSION}"
+    #      if [ -z "$current" ]; then
+    #        current="0.0.1"
+    #      fi
+    #      IFS='.' read -r major minor patch <<< "$current"
+    #      if [ -z "$patch" ]; then patch=0; fi
+    #      patch=$((patch + 1))
+    #      new_version="${major}.${minor}.${patch}"
+    #      echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
+    #      echo "Using unique version: $new_version"
 
       - name: Update pom.xml version
         run: |
