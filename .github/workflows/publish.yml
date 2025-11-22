@@ -30,6 +30,9 @@ jobs:
         id: bump_version
         run: |
           current="${CURRENT_VERSION}"
+          if [ -z "$current" ]; then
+            current="0.0.1"
+          fi
           IFS='.' read -r major minor patch <<< "$current"
           if [ -z "$patch" ]; then patch=0; fi
 
