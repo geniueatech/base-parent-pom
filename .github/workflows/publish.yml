@@ -16,6 +16,9 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+          server-id: github
+          server-username: ${{ github.actor }}
+          server-password: ${{ secrets.GITHUB_TOKEN }}
           cache: maven
 
     #  - name: Read current version
@@ -44,11 +47,12 @@ jobs:
           mvn versions:set -DnewVersion=${NEW_VERSION} -DgenerateBackupPoms=false
 
       - name: Deploy to GitHub Packages
-        env:
+    #    env:
     #      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          USERNAME: ${{ github.actor }}
-          MAVEN_PASSWORD: ${{ secrets.PAT_GITHUB_PACKAGES }}
-        run: mvn deploy -DskipTests
+    #      USERNAME: ${{ github.actor }}
+    #      MAVEN_PASSWORD: ${{ secrets.PAT_GITHUB_PACKAGES }}
+    #    run: mvn deploy -DskipTests
+        run: mvn deploy -B
 
       - name: Commit version bump and tag
         run: |
