@@ -86,10 +86,10 @@ jobs:
       run: |
         git config user.name "geniueatech"
         git config user.email "admin@geniueatech.com"
-        #git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-        #git add pom.xml
-        #git commit -m "Release ${NEW_VERSION}" || echo "No changes"
-        #git push origin master
+        git remote set-url origin https://x-access-token:${{ secrets.PAT_GITHUB_PACKAGES }}@github.com/${{ github.repository }}
+        git add pom.xml
+        git commit -m "Release ${NEW_VERSION}" || echo "No changes"
+        git push origin master
         git tag ${NEW_VERSION}
         git push origin HEAD:master --tags
 
