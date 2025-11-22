@@ -8,13 +8,10 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-
     steps:
-      # 1️⃣ Checkout repository
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Set up Java 21 and Maven
       - name: Set up Java
         uses: actions/setup-java@v3
         with:
@@ -22,39 +19,50 @@ jobs:
           java-version: 21
           cache: maven
 
-      # 3️⃣ Read current version from pom.xml robustly
       - name: Read current version
         id: read_version
         run: |
-          # Filter out Maven logging lines and remove -SNAPSHOT if present
-          version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | grep -Ev '^\[.*\]$' | sed 's/-SNAPSHOT//')
+          version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | grep -Ev '^\[.*\]$' | tail -n1 | sed 's/-SNAPSHOT//')
           echo "CURRENT_VERSION=$version" >> $GITHUB_ENV
           echo "Current version: $version"
 
-      # 4️⃣ Calculate new version
-      - name: Increment version
+      - name: Calculate unique version
         id: bump_version
         run: |
           current="${CURRENT_VERSION}"
           IFS='.' read -r major minor patch <<< "$current"
           if [ -z "$patch" ]; then patch=0; fi
-          patch=$((patch + 1))
-          new_version="${major}.${minor}.${patch}"
-          echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
-          echo "New version: $new_version"
 
-      # 5️⃣ Update pom.xml with new version
+          # Loop until version is unique
+          while true; do
+            new_version="${major}.${minor}.${patch}"
+            echo "Checking version: $new_version"
+            # Check if this version already exists in GitHub Packages
+            response=$(curl -s -o /dev/null -w "%{http_code}" \
+              -u "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" \
+              "https://maven.pkg.github.com/geniueatech/base-parent-pom/${new_version}/base-parent-pom-${new_version}.pom")
+
+            if [ "$response" == "404" ]; then
+              # Version does not exist, safe to use
+              break
+            fi
+
+            # Version exists, increment patch
+            patch=$((patch + 1))
+          done
+
+          echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
+          echo "Using unique version: $new_version"
+
       - name: Update pom.xml version
         run: |
           mvn versions:set -DnewVersion=${NEW_VERSION} -DgenerateBackupPoms=false
 
-      # 6️⃣ Deploy to GitHub Packages
-      - name: Publish to GitHub Packages
+      - name: Deploy to GitHub Packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn deploy -DskipTests
 
-      # 7️⃣ Commit and push version bump
       - name: Commit version bump and tag
         run: |
           git config user.name "github-actions"
