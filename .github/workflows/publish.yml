@@ -10,52 +10,56 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Checkout repository
       - name: Checkout
         uses: actions/checkout@v3
 
+      # 2️⃣ Set up Java 21 and Maven
       - name: Set up Java
         uses: actions/setup-java@v3
         with:
-          distribution: 'temurin'
-          java-version: '21'
+          distribution: temurin
+          java-version: 21
           cache: maven
 
-      - name: Read current version from pom.xml
+      # 3️⃣ Read current version from pom.xml robustly
+      - name: Read current version
         id: read_version
         run: |
-          version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          # Filter out Maven logging lines and remove -SNAPSHOT if present
+          version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | grep -Ev '^\[.*\]$' | sed 's/-SNAPSHOT//')
           echo "CURRENT_VERSION=$version" >> $GITHUB_ENV
+          echo "Current version: $version"
 
-      - name: Calculate new version
+      # 4️⃣ Calculate new version
+      - name: Increment version
         id: bump_version
         run: |
           current="${CURRENT_VERSION}"
           IFS='.' read -r major minor patch <<< "$current"
-
-          if [ "$patch" -lt 100 ]; then
-            patch=$((patch + 1))
-          else
-            patch=0
-            minor=$((minor + 1))
-          fi
-
+          if [ -z "$patch" ]; then patch=0; fi
+          patch=$((patch + 1))
           new_version="${major}.${minor}.${patch}"
           echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
+          echo "New version: $new_version"
 
+      # 5️⃣ Update pom.xml with new version
       - name: Update pom.xml version
         run: |
           mvn versions:set -DnewVersion=${NEW_VERSION} -DgenerateBackupPoms=false
 
+      # 6️⃣ Deploy to GitHub Packages
       - name: Publish to GitHub Packages
-        run: mvn deploy -DskipTests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn deploy -DskipTests
 
-      - name: Commit version bump
+      # 7️⃣ Commit and push version bump
+      - name: Commit version bump and tag
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add pom.xml
-          git commit -m "Release ${NEW_VERSION}" || echo "No changes"
-          git tag ${NEW_VERSION}
-          git push origin HEAD:main --tags
+          git commit -m "Release ${NEW_VERSION}" || echo "No changes to commit"
+          git tag ${NEW_VERSION} || echo "Tag already exists"
+          git push origin HEAD:master --tags
