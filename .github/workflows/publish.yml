@@ -1,0 +1,61 @@
+name: Publish Parent POM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: maven
+
+      - name: Read current version from pom.xml
+        id: read_version
+        run: |
+          version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "CURRENT_VERSION=$version" >> $GITHUB_ENV
+
+      - name: Calculate new version
+        id: bump_version
+        run: |
+          current="${CURRENT_VERSION}"
+          IFS='.' read -r major minor patch <<< "$current"
+
+          if [ "$patch" -lt 100 ]; then
+            patch=$((patch + 1))
+          else
+            patch=0
+            minor=$((minor + 1))
+          fi
+
+          new_version="${major}.${minor}.${patch}"
+          echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
+
+      - name: Update pom.xml version
+        run: |
+          mvn versions:set -DnewVersion=${NEW_VERSION} -DgenerateBackupPoms=false
+
+      - name: Publish to GitHub Packages
+        run: mvn deploy -DskipTests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add pom.xml
+          git commit -m "Release ${NEW_VERSION}" || echo "No changes"
+          git tag ${NEW_VERSION}
+          git push origin HEAD:main --tags
