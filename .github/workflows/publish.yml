@@ -35,16 +35,6 @@ jobs:
           fi
           IFS='.' read -r major minor patch <<< "$current"
           if [ -z "$patch" ]; then patch=0; fi
-
-          # Loop until version is unique
-          while true; do
-            new_version="${major}.${minor}.${patch}"
-            echo "Checking version: $new_version"
-            # Check if this version already exists in GitHub Packages
-            response=$(curl -s -o /dev/null -w "%{http_code}" \
-              -u "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" \
-              "https://maven.pkg.github.com/geniueatech/base-parent-pom/${new_version}/base-parent-pom-${new_version}.pom")
-
             if [ "$response" == "404" ]; then
               # Version does not exist, safe to use
               break
