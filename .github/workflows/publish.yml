@@ -36,9 +36,21 @@ jobs:
       with:
         java-version: '21'
         distribution: 'temurin'
-    - run: mvn --batch-mode --update-snapshots verify
-    - run: mkdir staging && cp target/*.pom staging || echo "No POM found"
-    - uses: actions/upload-artifact@v4
+
+    - name: Verify Maven build
+      run: mvn --batch-mode --update-snapshots verify
+
+    - name: Generate Effective POM
+      run: mvn help:effective-pom -Doutput=effective-pom.xml
+
+    - name: Prepare staging folder
+      run: |
+        mkdir staging
+        cp effective-pom.xml staging/ || echo "No effective POM generated"
+        cp target/*.pom staging/ || echo "No regular POM found"
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
       with:
         name: Package
         path: staging
