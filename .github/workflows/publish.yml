@@ -1,64 +1,40 @@
-name: Publish Parent POM
+name: Java Maven Build & Publish Artifact
+
 on:
   push:
-    branches:
-      - master
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
 
 jobs:
-  publish:
+  build_test:
+
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        
-      - name: Set up Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: temurin
-          java-version: 21
-          server-id: github
-          server-username: ${{ github.actor }}
-          server-password: ${{ secrets.GITHUB_TOKEN }}
-          cache: maven
+    - uses: actions/checkout@v3
+    - name: Set up JDK 21
+      uses: actions/setup-java@v3
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: maven
+    - name: Build with Maven
+      run: mvn -B package --file pom.xml
 
-    #  - name: Read current version
-    #   id: read_version
-    #    run: |
-    #      version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | grep -Ev '^\[.*\]$' | tail -n1 | sed 's/-SNAPSHOT//')
-    #      echo "CURRENT_VERSION=$version" >> $GITHUB_ENV
-    #      echo "Current version: $version"
-
-    #  - name: Calculate unique version
-    #    id: bump_version
-    #    run: |
-    #      current="${CURRENT_VERSION}"
-    #      if [ -z "$current" ]; then
-    #        current="0.0.1"
-    #      fi
-    #      IFS='.' read -r major minor patch <<< "$current"
-    #      if [ -z "$patch" ]; then patch=0; fi
-    #      patch=$((patch + 1))
-    #      new_version="${major}.${minor}.${patch}"
-    #      echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
-    #      echo "Using unique version: $new_version"
-
-      - name: Update pom.xml version
-        run: |
-          mvn versions:set -DnewVersion=${NEW_VERSION} -DgenerateBackupPoms=false
-
-      - name: Deploy to GitHub Packages
-    #    env:
-    #      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #      USERNAME: ${{ github.actor }}
-    #      MAVEN_PASSWORD: ${{ secrets.PAT_GITHUB_PACKAGES }}
-    #    run: mvn deploy -DskipTests
-        run: mvn deploy -B
-
-      - name: Commit version bump and tag
-        run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add pom.xml
-          git commit -m "Release ${NEW_VERSION}" || echo "No changes to commit"
-          git tag ${NEW_VERSION} || echo "Tag already exists"
-          git push origin HEAD:master --tags
+   
+  publish-job:
+    runs-on: ubuntu-latest
+    needs: build_test
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+    - run: mvn --batch-mode --update-snapshots verify
+    - run: mkdir staging && cp target/*.jar staging
+    - uses: actions/upload-artifact@v3
+      with:
+        name: Package
+        path: staging
